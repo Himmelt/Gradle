@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Gradle.iml" filepath="$PROJECT_DIR$/Gradle.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/core/src/main/core.iml" filepath="$PROJECT_DIR$/src/core/src/main/core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/resources-http/src/main/resources-http.iml" filepath="$PROJECT_DIR$/src/resources-http/src/main/resources-http.iml" />
+    </modules>
+  </component>
+</project>
