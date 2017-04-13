@@ -33,11 +33,13 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.protocol.BasicHttpContext;
 import org.gradle.api.UncheckedIOException;
+import org.gradle.invocation.DefaultGradle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Locale;
 
 /**
@@ -110,6 +112,16 @@ public class HttpClientHelper implements Closeable {
         // Without this, HTTP Client prohibits multiple redirects to the same location within the same context
         httpContext.removeAttribute(HttpClientContext.REDIRECT_LOCATIONS);
         LOGGER.debug("Performing HTTP {}: {}", request.getMethod(), request.getURI());
+        ///////////////////////////////////////////////////////////////////////////
+        URI uri = request.getURI();
+        if (uri != null && DefaultGradle.HTTP_LISTENER != null) {
+            uri = DefaultGradle.HTTP_LISTENER.beforeRequest(uri);
+            if (uri != null) {
+                request.setURI(uri);
+                LOGGER.info("HTTP redirect to {}", uri);
+            }
+        }
+        //////////////////////////////////////////////////////////////////////////
         return getClient().execute(request, httpContext);
     }
 

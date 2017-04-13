@@ -18,10 +18,7 @@ package org.gradle.invocation;
 
 import com.google.common.collect.Lists;
 import groovy.lang.Closure;
-import org.gradle.BuildAdapter;
-import org.gradle.BuildListener;
-import org.gradle.BuildResult;
-import org.gradle.StartParameter;
+import org.gradle.*;
 import org.gradle.api.Action;
 import org.gradle.api.Nullable;
 import org.gradle.api.Project;
@@ -50,6 +47,8 @@ import org.gradle.internal.MutableActionSet;
 import org.gradle.listener.ClosureBackedMethodInvocationDispatch;
 import org.gradle.util.GradleVersion;
 import org.gradle.util.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -70,6 +69,11 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
     private Path identityPath;
     private final ClassLoaderScope classLoaderScope;
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public static HttpListener HTTP_LISTENER;
+    public static final Logger LOGGER = LoggerFactory.getLogger(DefaultGradle.class);
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     public DefaultGradle(GradleInternal parent, StartParameter startParameter, ServiceRegistryFactory parentRegistry) {
         this.parent = parent;
         this.startParameter = startParameter;
@@ -84,6 +88,10 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
                 rootProjectActions = null;
             }
         });
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        HTTP_LISTENER = null;
+        LOGGER.debug("Clear Http Listener!");
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
     @Override
@@ -283,7 +291,14 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
 
     @Override
     public void addListener(Object listener) {
-        getListenerManager().addListener(listener);
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (listener instanceof HttpListener) {
+            HTTP_LISTENER = (HttpListener) listener;
+            LOGGER.info("Add Http Listener");
+        } else {
+            getListenerManager().addListener(listener);
+        }
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
     @Override
