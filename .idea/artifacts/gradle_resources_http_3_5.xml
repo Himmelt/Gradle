@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="gradle-resources-http-3.5">
+    <output-path>$PROJECT_DIR$/out/plugins</output-path>
+    <root id="archive" name="gradle-resources-http-3.5.jar">
+      <element id="module-output" name="resources-http" />
+    </root>
+  </artifact>
+</component>
