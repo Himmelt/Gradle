@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'org.gradle'
-version = '4.8.1'
+version = '5.4.1'
 archivesBaseName = 'gradle-resources-http'
 
 sourceCompatibility = targetCompatibility = 1.8
