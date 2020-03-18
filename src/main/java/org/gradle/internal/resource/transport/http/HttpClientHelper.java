@@ -18,6 +18,9 @@ package org.gradle.internal.resource.transport.http;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -36,23 +39,60 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.Files.readAllBytes;
 import static org.apache.http.client.protocol.HttpClientContext.REDIRECT_LOCATIONS;
 
 /**
  * Provides some convenience and unified logging.
+ *
+ * @author Himmelt
  */
 public class HttpClientHelper implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpClientHelper.class);
     private CloseableHttpClient client;
     private final HttpSettings settings;
+
+    private static String[] ORIGIN = new String[]{};
+    private static String[] TARGET = new String[]{};
+
+    static {
+        try {
+            File file = new File("http_mapping.json");
+            Gson gson = new Gson();
+            Type typeMap = new TypeToken<Map<String, String>>() {
+            }.getType();
+            if (file.exists()) {
+                try {
+                    Map<String, String> map = gson.fromJson(new String(readAllBytes(file.getAbsoluteFile().toPath()), UTF_8), typeMap);
+                    ArrayList<String> keys = new ArrayList<>();
+                    ArrayList<String> vals = new ArrayList<>();
+                    map.forEach((key, val) -> {
+                        keys.add(key);
+                        vals.add(val);
+                    });
+                    ORIGIN = keys.toArray(new String[]{});
+                    TARGET = vals.toArray(new String[]{});
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * Maintains a queue of contexts which are shared between threads when authentication
@@ -136,6 +176,18 @@ public class HttpClientHelper implements Closeable {
         // Without this, HTTP Client prohibits multiple redirects to the same location within the same context
         httpContext.removeAttribute(REDIRECT_LOCATIONS);
         LOGGER.debug("Performing HTTP {}: {}", request.getMethod(), stripUserCredentials(request.getURI()));
+
+        ///////////////////////////////////////////////////////////////////////////
+        try {
+            String originURI = request.getURI().toString();
+            String targetURI = StringUtils.replaceEach(originURI, ORIGIN, TARGET);
+            request.setURI(URI.create(targetURI));
+            System.out.println("origin -> " + originURI);
+            System.out.println("target -> " + targetURI);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        //////////////////////////////////////////////////////////////////////////
 
         try {
             CloseableHttpResponse response = getClient().execute(request, httpContext);
