@@ -10,6 +10,7 @@ sourceCompatibility = targetCompatibility = 1.8
 
 repositories {
     jcenter()
+    maven { url 'https://maven.aliyun.com/repository/public/' }
     maven { url 'https://repo.gradle.org/gradle/libs-releases-local/' }
 }
 
