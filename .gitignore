@@ -1,0 +1,9 @@
+lib/
+out/
+build/
+.idea/
+.gradle/
+
+!lib/gradle-resources-6.2.2.jar
+!lib/gradle-base-services-6.2.2.jar
+!lib/gradle-resources-http-6.2.2.jar
