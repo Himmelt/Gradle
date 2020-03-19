@@ -16,9 +16,6 @@
 
 package org.gradle.internal.resource.transport.http;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import org.apache.commons.lang.StringUtils;
 import org.apache.http.*;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -31,21 +28,16 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+import org.gradle.api.invocation.Gradle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.Files.readAllBytes;
+import java.util.function.Function;
 
 /**
  * Provides some convenience and unified logging.
@@ -55,35 +47,6 @@ public class HttpClientHelper implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpClientHelper.class);
     private CloseableHttpClient client;
     private final HttpSettings settings;
-
-    private static String[] ORIGIN = new String[]{};
-    private static String[] TARGET = new String[]{};
-
-    static {
-        try {
-            File file = new File("http_mapping.json");
-            Gson gson = new Gson();
-            Type typeMap = new TypeToken<Map<String, String>>() {
-            }.getType();
-            if (file.exists()) {
-                try {
-                    Map<String, String> map = gson.fromJson(new String(readAllBytes(file.getAbsoluteFile().toPath()), UTF_8), typeMap);
-                    ArrayList<String> keys = new ArrayList<>();
-                    ArrayList<String> vals = new ArrayList<>();
-                    map.forEach((key, val) -> {
-                        keys.add(key);
-                        vals.add(val);
-                    });
-                    ORIGIN = keys.toArray(new String[]{});
-                    TARGET = vals.toArray(new String[]{});
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Maintains a queue of contexts which are shared between threads when authentication
@@ -183,11 +146,14 @@ public class HttpClientHelper implements Closeable {
 
         ///////////////////////////////////////////////////////////////////////////
         try {
-            String originURI = request.getURI().toString();
-            String targetURI = StringUtils.replaceEach(originURI, ORIGIN, TARGET);
-            request.setURI(URI.create(targetURI));
-            System.out.println("origin -> " + originURI);
-            System.out.println("target -> " + targetURI);
+            String targetURI = request.getURI().toString();
+            for (Function<String, String> listener : Gradle.listeners) {
+                if (targetURI == null) break;
+                targetURI = listener.apply(targetURI);
+            }
+            if (targetURI != null && !targetURI.isEmpty()) {
+                request.setURI(URI.create(targetURI));
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         }

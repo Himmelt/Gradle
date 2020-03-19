@@ -20,8 +20,10 @@ configurations {
 }
 
 dependencies {
+    compile files('lib/gradle-core-api-' + version + '.jar')
     compile files('lib/gradle-base-services-' + version + '.jar')
     compile files('lib/gradle-resources-' + version + '.jar')
+    compile files('lib/groovy-all-2.4.12.jar')
     shade files('lib/gradle-resources-http-' + version + '.jar')
     compile group: 'commons-lang', name: 'commons-lang', version: '2.6'
     compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
