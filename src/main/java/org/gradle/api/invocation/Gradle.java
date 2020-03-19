@@ -31,7 +31,10 @@ import org.gradle.internal.HasInternalProtocol;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
 
 /**
  * Represents an invocation of Gradle.
@@ -359,4 +362,12 @@ public interface Gradle extends PluginAware {
      */
     @Incubating
     IncludedBuild includedBuild(String name);
+
+    default void addURIListener(Function<String, String> listener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener);
+        }
+    }
+
+    List<Function<String, String>> listeners = new ArrayList<>();
 }
