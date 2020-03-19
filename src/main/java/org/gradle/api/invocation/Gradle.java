@@ -31,10 +31,12 @@ import org.gradle.internal.HasInternalProtocol;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * Represents an invocation of Gradle.
@@ -195,7 +197,7 @@ public interface Gradle extends PluginAware {
      * Adds a closure to be called when the build settings have been loaded and evaluated.
      * <p>
      * The settings object is fully configured and is ready to use to load the build projects. The
-     * {@link Settings} object is passed to the closure as a parameter.
+     * {@link org.gradle.api.initialization.Settings} object is passed to the closure as a parameter.
      *
      * @param closure The closure to execute.
      */
@@ -298,9 +300,9 @@ public interface Gradle extends PluginAware {
      * Adds the given listener to this build. The listener may implement any of the given listener interfaces:
      *
      * <ul>
-     * <li>{@link BuildListener}
+     * <li>{@link org.gradle.BuildListener}
      * <li>{@link org.gradle.api.execution.TaskExecutionGraphListener}
-     * <li>{@link ProjectEvaluationListener}
+     * <li>{@link org.gradle.api.ProjectEvaluationListener}
      * <li>{@link org.gradle.api.execution.TaskExecutionListener}
      * <li>{@link org.gradle.api.execution.TaskActionListener}
      * <li>{@link org.gradle.api.logging.StandardOutputListener}
@@ -363,11 +365,50 @@ public interface Gradle extends PluginAware {
     @Incubating
     IncludedBuild includedBuild(String name);
 
-    default void addURIListener(Function<String, String> listener) {
-        if (listener != null && !listeners.contains(listener)) {
-            listeners.add(listener);
+    /*-------------- URI Listener --------------*/
+
+    List<Closure<String>> URI_CLOSURES = new ArrayList<>();
+
+    /**
+     * Add URI transform closure listener.
+     */
+    default void addURIListener(Closure<String> listener) {
+        if (!URI_CLOSURES.contains(listener)) {
+            URI_CLOSURES.add(listener);
         }
     }
 
-    List<Function<String, String>> listeners = new ArrayList<>();
+    static URI postURIRequest(URI originURI) {
+        String origin = originURI.toString();
+        String target = postURIRequest(origin);
+        if (target.equals(origin)) {
+            return originURI;
+        }
+        return URI.create(target);
+    }
+
+    static URL postURLRequest(URL originURL) throws MalformedURLException {
+        String origin = originURL.toString();
+        String target = postURIRequest(origin);
+        if (target.equals(origin)) {
+            return originURL;
+        }
+        return new URL(target);
+    }
+
+    static String postURIRequest(String originURI) {
+        if (originURI.isEmpty() || Gradle.URI_CLOSURES.isEmpty()) {
+            return originURI;
+        }
+        for (Closure<String> listener : Gradle.URI_CLOSURES) {
+            if (listener == null) {
+                continue;
+            }
+            String temp = listener.call(originURI);
+            if (temp != null && !temp.isEmpty()) {
+                originURI = temp;
+            }
+        }
+        return originURI;
+    }
 }

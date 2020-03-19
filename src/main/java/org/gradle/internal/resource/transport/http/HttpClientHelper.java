@@ -34,10 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Function;
 
 /**
  * Provides some convenience and unified logging.
@@ -146,14 +144,7 @@ public class HttpClientHelper implements Closeable {
 
         ///////////////////////////////////////////////////////////////////////////
         try {
-            String targetURI = request.getURI().toString();
-            for (Function<String, String> listener : Gradle.listeners) {
-                if (listener == null) continue;
-                targetURI = listener.apply(targetURI);
-            }
-            if (targetURI != null && !targetURI.isEmpty()) {
-                request.setURI(URI.create(targetURI));
-            }
+            request.setURI(Gradle.postURIRequest(request.getURI()));
         } catch (Throwable e) {
             e.printStackTrace();
         }
