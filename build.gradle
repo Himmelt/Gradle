@@ -4,6 +4,7 @@ plugins {
 
 group = 'org.gradle'
 version = '4.3.1'
+archivesBaseName = 'gradle-uri'
 
 sourceCompatibility = targetCompatibility = 1.8
 
@@ -34,8 +35,6 @@ dependencies {
     shade_core_api files('lib/gradle-core-api-' + version + '.jar')
     shade_resources_http files('lib/gradle-resources-http-' + version + '.jar')
 }
-
-jar.enabled(false)
 
 task core_api(type: Jar) {
     archiveBaseName.set 'gradle-core-api'
