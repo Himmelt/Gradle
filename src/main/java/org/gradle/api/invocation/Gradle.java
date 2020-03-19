@@ -52,7 +52,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Returns the Gradle user home directory.
-     *
+     * <p>
      * This directory is used to cache downloaded resources, compiled build scripts and so on.
      *
      * @return The user home directory. Never returns null.
@@ -61,12 +61,12 @@ public interface Gradle extends PluginAware {
 
     /**
      * Returns the Gradle home directory, if any.
-     *
+     * <p>
      * This directory is the directory containing the Gradle distribution executing this build.
      * <p>
-     * When using the “Gradle Daemon”, this may not be the same Gradle distribution that the build was started with.
+     * When using the "Gradle Daemon", this may not be the same Gradle distribution that the build was started with.
      * If an existing daemon process is running that is deemed compatible (e.g. has the desired JVM characteristics)
-     * then this daemon may be used instead of starting a new process and it may have been started from a different “gradle home”.
+     * then this daemon may be used instead of starting a new process and it may have been started from a different "gradle home".
      * However, it is guaranteed to be the same version of Gradle. For more information on the Gradle Daemon, please consult
      * <a href="https://docs.gradle.org/current/userguide/gradle_daemon.html" target="_top">the user guide</a>.
      *
@@ -93,7 +93,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to execute against the root project of this build.
-     *
+     * <p>
      * If the root project is already available, the action
      * is executed immediately. Otherwise, the action is executed when the root project becomes available.
      *
@@ -103,7 +103,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to execute against all projects of this build.
-     *
+     * <p>
      * The action is executed immediately against all projects which are
      * already available. It is also executed as subsequent projects are added to this build.
      *
@@ -158,7 +158,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called immediately after a project is evaluated.
-     *
+     * <p>
      * The project is passed to the closure as the first parameter. The project evaluation failure, if any,
      * is passed as the second parameter. Both parameters are optional.
      *
@@ -176,7 +176,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when the build is started.
-     *
+     * <p>
      * This {@code Gradle} instance is passed to the closure as the first parameter.
      *
      * @param closure The closure to execute.
@@ -193,7 +193,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when the build settings have been loaded and evaluated.
-     *
+     * <p>
      * The settings object is fully configured and is ready to use to load the build projects. The
      * {@link Settings} object is passed to the closure as a parameter.
      *
@@ -203,7 +203,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to be called when the build settings have been loaded and evaluated.
-     *
+     * <p>
      * The settings object is fully configured and is ready to use to load the build projects.
      *
      * @param action The action to execute.
@@ -213,7 +213,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when the projects for the build have been created from the settings.
-     *
+     * <p>
      * None of the projects have been evaluated. This {@code Gradle} instance is passed to the closure as a parameter.
      * <p>
      * An example of hooking into the projectsLoaded to configure buildscript classpath from the init script.
@@ -237,7 +237,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to be called when the projects for the build have been created from the settings.
-     *
+     * <p>
      * None of the projects have been evaluated.
      *
      * @param action The action to execute.
@@ -247,7 +247,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when all projects for the build have been evaluated.
-     *
+     * <p>
      * The project objects are fully configured and are ready to use to populate the task graph.
      * This {@code Gradle} instance is passed to the closure as a parameter.
      *
@@ -257,7 +257,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to be called when all projects for the build have been evaluated.
-     *
+     * <p>
      * The project objects are fully configured and are ready to use to populate the task graph.
      *
      * @param action The action to execute.
@@ -267,7 +267,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when the build is completed.
-     *
+     * <p>
      * All selected tasks have been executed.
      * A {@link BuildResult} instance is passed to the closure as a parameter.
      *
@@ -277,7 +277,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds an action to be called when the build is completed.
-     *
+     * <p>
      * All selected tasks have been executed.
      *
      * @param action The action to execute.
@@ -287,7 +287,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a {@link BuildListener} to this Build instance.
-     *
+     * <p>
      * The listener is notified of events which occur during the execution of the build.
      *
      * @param buildListener The listener to add.
@@ -322,7 +322,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Uses the given object as a logger.
-     *
+     * <p>
      * The logger object may implement any of the listener interfaces supported by
      * {@link #addListener(Object)}.
      * <p>
@@ -337,7 +337,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Returns this {@code Gradle} instance.
-     *
+     * <p>
      * This method is useful in init scripts to explicitly access Gradle
      * properties and methods. For example, using <code>gradle.parent</code> can express your intent better than using
      * <code>parent</code>. This property also allows you to access Gradle properties from a scope where the property
@@ -364,7 +364,7 @@ public interface Gradle extends PluginAware {
     IncludedBuild includedBuild(String name);
 
     default void addURIListener(Function<String, String> listener) {
-        if (!listeners.contains(listener)) {
+        if (listener != null && !listeners.contains(listener)) {
             listeners.add(listener);
         }
     }

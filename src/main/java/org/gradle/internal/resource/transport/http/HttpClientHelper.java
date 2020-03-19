@@ -148,7 +148,7 @@ public class HttpClientHelper implements Closeable {
         try {
             String targetURI = request.getURI().toString();
             for (Function<String, String> listener : Gradle.listeners) {
-                if (targetURI == null) break;
+                if (listener == null) continue;
                 targetURI = listener.apply(targetURI);
             }
             if (targetURI != null && !targetURI.isEmpty()) {
