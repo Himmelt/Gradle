@@ -7,16 +7,22 @@ buildscript {
     }
     dependencies {
         classpath group: 'commons-io', name: 'commons-io', version: '2.6'
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.15.1"
     }
 }
 
-plugins {
-    id 'java'
-}
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
+
+def gradle_version = '4.3.1'
 
 group = 'org.gradle'
-version = '4.3.1'
-archivesBaseName = 'gradle-uri'
+version = gradle_version + '-SNAPSHOT'
+
+def _BINTRAY_USER = System.getenv('BINTRAY_USER')
+def _BINTRAY_KEY = System.getenv('BINTRAY_KEY')
+def _REPO_KEY = version.contains("SNAPSHOT") ? 'oss-snapshot-local' : 'oss-release-local'
 
 sourceCompatibility = targetCompatibility = 1.8
 
@@ -34,8 +40,8 @@ configurations {
 }
 
 dependencies {
-    compile group: 'org.gradle', name: 'gradle-base-services', version: version
-    compile group: 'org.gradle', name: 'gradle-resources', version: version
+    compile group: 'org.gradle', name: 'gradle-base-services', version: gradle_version
+    compile group: 'org.gradle', name: 'gradle-resources', version: gradle_version
     compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.12'
     compile group: 'commons-lang', name: 'commons-lang', version: '2.6'
     compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
@@ -44,9 +50,11 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '17.0'
     compile group: 'com.google.code.findbugs', name: 'jsr305', version: '1.3.9'
 
-    shade_core_api files('lib/gradle-core-api-' + version + '.jar')
-    shade_resources_http files('lib/gradle-resources-http-' + version + '.jar')
+    shade_core_api files('lib/gradle-core-api-' + gradle_version + '.jar')
+    shade_resources_http files('lib/gradle-resources-http-' + gradle_version + '.jar')
 }
+
+jar.enabled(false)
 
 task core_api(type: Jar) {
     archiveBaseName.set 'gradle-core-api'
@@ -75,11 +83,11 @@ task resources_http(type: Jar) {
 }
 
 task zip_bin(type: Zip, dependsOn: [core_api, resources_http]) {
-    String identify = 'gradle-' + project.version
-    String name = identify + '-bin.zip'
+    String identify = 'gradle-' + gradle_version
+    String identifyName = identify + '-bin.zip'
     archiveFileName.set 'gradle-uri-' + project.version + '-bin.zip'
-    File binFile = cacheFile('https://services.gradle.org/distributions/' + name, 'gradle-dist/' + name)
-    from(zipTree(binFile).matching {
+    File originBinFile = cacheFile('https://services.gradle.org/distributions/' + identifyName, 'gradle-dist/' + identifyName)
+    from(zipTree(originBinFile).matching {
         exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar'
     })
     from(core_api.getArchiveFile(), {
@@ -91,12 +99,12 @@ task zip_bin(type: Zip, dependsOn: [core_api, resources_http]) {
 }
 
 task zip_all(type: Zip) {
-    String identify = 'gradle-' + project.version
-    String name = identify + '-all.zip'
+    String identify = 'gradle-' + gradle_version
+    String identifyName = identify + '-all.zip'
     archiveFileName.set 'gradle-uri-' + project.version + '-all.zip'
-    File binFile = cacheFile('https://services.gradle.org/distributions/' + name, 'gradle-dist/' + name)
-    from(zipTree(binFile).matching {
-        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar'
+    File originAllFile = cacheFile('https://services.gradle.org/distributions/' + identifyName, 'gradle-dist/' + identifyName)
+    from(zipTree(originAllFile).matching {
+        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar', '**/http/HttpClientHelper*.java', '**/api/invocation/Gradle*.java'
     })
     from(core_api.getArchiveFile(), {
         it.into(identify + '/lib/')
@@ -104,10 +112,10 @@ task zip_all(type: Zip) {
     from(resources_http.getArchiveFile(), {
         it.into(identify + '/lib/plugins/')
     })
-}
-
-build {
-    dependsOn(core_api, resources_http, zip_bin, zip_all)
+    from(sourceSets.main.java, {
+        println(it)
+        it.into(identify + '/src/core-api/org/gradle/api/invocation/')
+    })
 }
 
 File cacheFile(String url, String filepath) {
@@ -143,4 +151,41 @@ File cacheFile(String url, String filepath) {
         e.printStackTrace()
     }
     return null
+}
+
+build {
+    dependsOn(core_api, resources_http, zip_bin, zip_all)
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'org.soraworld'
+            artifactId = 'gradle-uri'
+            version = project.version
+            artifact zip_bin{
+                classifier 'bin'
+                extension 'zip'
+            }
+            artifact zip_all{
+                classifier 'all'
+                extension 'zip'
+            }
+        }
+    }
+}
+
+artifactory {
+    setContextUrl('https://oss.jfrog.org/artifactory')
+    publish {
+        repository {
+            repoKey = _REPO_KEY
+            username = _BINTRAY_USER
+            password = _BINTRAY_KEY
+            maven = true
+        }
+        defaults {
+            publications('mavenJava')
+        }
+    }
 }
