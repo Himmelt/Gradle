@@ -1,7 +1,4 @@
-lib/
 out/
 build/
 .idea/
 .gradle/
-
-!lib/gradle-**.jar
