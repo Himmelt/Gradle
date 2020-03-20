@@ -1,3 +1,15 @@
+import org.apache.commons.io.FileUtils
+
+buildscript {
+    repositories {
+        maven { url 'https://plugins.gradle.org/m2/' }
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+    }
+    dependencies {
+        classpath group: 'commons-io', name: 'commons-io', version: '2.6'
+    }
+}
+
 plugins {
     id 'java'
 }
@@ -62,6 +74,73 @@ task resources_http(type: Jar) {
     exclude '**/api/invocation/Gradle*'
 }
 
+task zip_bin(type: Zip, dependsOn: [core_api, resources_http]) {
+    String identify = 'gradle-' + project.version
+    String name = identify + '-bin.zip'
+    archiveFileName.set 'gradle-uri-' + project.version + '-bin.zip'
+    File binFile = cacheFile('https://services.gradle.org/distributions/' + name, 'gradle-dist/' + name)
+    from(zipTree(binFile).matching {
+        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar'
+    })
+    from(core_api.getArchiveFile(), {
+        it.into(identify + '/lib/')
+    })
+    from(resources_http.getArchiveFile(), {
+        it.into(identify + '/lib/plugins/')
+    })
+}
+
+task zip_all(type: Zip) {
+    String identify = 'gradle-' + project.version
+    String name = identify + '-all.zip'
+    archiveFileName.set 'gradle-uri-' + project.version + '-all.zip'
+    File binFile = cacheFile('https://services.gradle.org/distributions/' + name, 'gradle-dist/' + name)
+    from(zipTree(binFile).matching {
+        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar'
+    })
+    from(core_api.getArchiveFile(), {
+        it.into(identify + '/lib/')
+    })
+    from(resources_http.getArchiveFile(), {
+        it.into(identify + '/lib/plugins/')
+    })
+}
+
 build {
-    dependsOn(core_api, resources_http)
+    dependsOn(core_api, resources_http, zip_bin, zip_all)
+}
+
+File cacheFile(String url, String filepath) {
+    try {
+        URL source = new URL(url)
+        File targetFile = new File(gradle.gradleUserHomeDir, 'caches/custom-caches/' + filepath)
+        File eTagFile = new File(targetFile.path + ".etag")
+        targetFile.mkdirs()
+
+        String sourceETag = source.openConnection().getHeaderField("ETag").replaceAll('"', '')
+
+        if (!targetFile.exists() || !eTagFile.exists() || targetFile.isDirectory() || eTagFile.isDirectory()) {
+            targetFile.delete()
+            eTagFile.delete()
+            println "Cache downloading " + source
+            FileUtils.copyURLToFile(source, targetFile)
+            FileUtils.writeStringToFile(eTagFile, sourceETag, "UTF-8")
+        } else {
+            String fileETag = FileUtils.readFileToString(eTagFile, "UTF-8")
+            if (sourceETag != fileETag) {
+                println "Cache file " + filepath + " is outdated with eTag: " + fileETag + " -> " + sourceETag
+                targetFile.delete()
+                eTagFile.delete()
+                println "Cache downloading " + source
+                FileUtils.copyURLToFile(source, targetFile)
+                FileUtils.writeStringToFile(eTagFile, sourceETag, "UTF-8")
+            } else {
+                println "Cache file " + filepath + " is up-to-date with eTag: " + fileETag
+            }
+        }
+        return targetFile
+    } catch (Throwable e) {
+        e.printStackTrace()
+    }
+    return null
 }
