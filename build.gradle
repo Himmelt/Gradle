@@ -112,9 +112,15 @@ task zip_all(type: Zip) {
     from(resources_http.getArchiveFile(), {
         it.into(identify + '/lib/plugins/')
     })
-    from(sourceSets.main.java, {
-        println(it)
-        it.into(identify + '/src/core-api/org/gradle/api/invocation/')
+    from(sourceSets.main.java.matching({
+        exclude '**/http/HttpClientHelper*'
+    }), {
+        it.into(identify + '/src/core-api/')
+    })
+    from(sourceSets.main.java.matching({
+        exclude '**/api/invocation/Gradle*'
+    }), {
+        it.into(identify + '/src/resources-http/')
     })
 }
 
@@ -163,13 +169,11 @@ publishing {
             groupId = 'org.soraworld'
             artifactId = 'gradle-uri'
             version = project.version
-            artifact zip_bin{
+            artifact zip_bin {
                 classifier 'bin'
-                extension 'zip'
             }
-            artifact zip_all{
+            artifact zip_all {
                 classifier 'all'
-                extension 'zip'
             }
         }
     }
