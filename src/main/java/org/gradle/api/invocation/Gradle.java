@@ -20,9 +20,9 @@ import org.gradle.BuildListener;
 import org.gradle.BuildResult;
 import org.gradle.StartParameter;
 import org.gradle.api.Action;
+import org.gradle.api.Incubating;
 import org.gradle.api.Project;
 import org.gradle.api.ProjectEvaluationListener;
-import org.gradle.api.UnknownDomainObjectException;
 import org.gradle.api.execution.TaskExecutionGraph;
 import org.gradle.api.initialization.IncludedBuild;
 import org.gradle.api.initialization.Settings;
@@ -63,14 +63,14 @@ public interface Gradle extends PluginAware {
 
     /**
      * Returns the Gradle home directory, if any.
-     *
+     * <p>
      * This directory is the directory containing the Gradle distribution executing this build.
      * <p>
      * When using the "Gradle Daemon", this may not be the same Gradle distribution that the build was started with.
      * If an existing daemon process is running that is deemed compatible (e.g. has the desired JVM characteristics)
      * then this daemon may be used instead of starting a new process and it may have been started from a different “gradle home”.
-     * However, it is guaranteed to be the same version of Gradle. For more information on the Gradle Daemon, please consult the
-     * <a href="https://docs.gradle.org/current/userguide/gradle_daemon.html" target="_top">User Manual</a>.
+     * However, it is guaranteed to be the same version of Gradle. For more information on the Gradle Daemon, please consult
+     * <a href="https://docs.gradle.org/current/userguide/gradle_daemon.html" target="_top">the user guide</a>.
      *
      * @return The home directory. May return null.
      */
@@ -195,7 +195,7 @@ public interface Gradle extends PluginAware {
 
     /**
      * Adds a closure to be called when the build settings have been loaded and evaluated.
-     * <p>
+     *
      * The settings object is fully configured and is ready to use to load the build projects. The
      * {@link org.gradle.api.initialization.Settings} object is passed to the closure as a parameter.
      *
@@ -354,15 +354,16 @@ public interface Gradle extends PluginAware {
      *
      * @since 3.1
      */
+    @Incubating
     Collection<IncludedBuild> getIncludedBuilds();
 
     /**
      * Returns the included build with the specified name for this build.
      *
-     * @throws UnknownDomainObjectException when there is no build with the given name
      * @since 3.1
      */
-    IncludedBuild includedBuild(String name) throws UnknownDomainObjectException;
+    @Incubating
+    IncludedBuild includedBuild(String name);
 
     /*-------------- URI Listener --------------*/
 
