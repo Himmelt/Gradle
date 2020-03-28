@@ -31,12 +31,12 @@ import org.gradle.internal.HasInternalProtocol;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Represents an invocation of Gradle.
@@ -377,37 +377,47 @@ public interface Gradle extends PluginAware {
         }
     }
 
-    static URI postURIRequest(URI originURI) {
-        String origin = originURI.toString();
-        String target = postURIRequest(origin);
-        if (target.equals(origin)) {
-            return originURI;
+    Function<String, String> postRequest = uri -> {
+        if (uri.isEmpty() || URI_CLOSURES.isEmpty()) {
+            return uri;
         }
-        return URI.create(target);
-    }
-
-    static URL postURLRequest(URL originURL) throws MalformedURLException {
-        String origin = originURL.toString();
-        String target = postURIRequest(origin);
-        if (target.equals(origin)) {
-            return originURL;
-        }
-        return new URL(target);
-    }
-
-    static String postURIRequest(String originURI) {
-        if (originURI.isEmpty() || Gradle.URI_CLOSURES.isEmpty()) {
-            return originURI;
-        }
-        for (Closure<String> listener : Gradle.URI_CLOSURES) {
+        for (Closure<String> listener : URI_CLOSURES) {
             if (listener == null) {
                 continue;
             }
-            String temp = listener.call(originURI);
+            String temp = listener.call(uri);
             if (temp != null && !temp.isEmpty()) {
-                originURI = temp;
+                uri = temp;
             }
         }
-        return originURI;
-    }
+        return uri;
+    };
+
+    Function<URI, URI> postURIRequest = uri -> {
+        if (uri == null) {
+            return null;
+        }
+        String origin = uri.toString();
+        String target = postRequest.apply(origin);
+        if (target.equals(origin)) {
+            return uri;
+        }
+        return URI.create(target);
+    };
+
+    Function<URL, URL> postURLRequest = url -> {
+        if (url == null) {
+            return null;
+        }
+        String origin = url.toString();
+        String target = postRequest.apply(origin);
+        if (target.equals(origin)) {
+            return url;
+        }
+        try {
+            return new URL(target);
+        } catch (Throwable ignored) {
+            return url;
+        }
+    };
 }

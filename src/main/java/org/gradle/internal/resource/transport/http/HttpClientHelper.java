@@ -131,7 +131,7 @@ public class HttpClientHelper implements Closeable {
         LOGGER.debug("Performing HTTP {}: {}", request.getMethod(), request.getURI());
         ///////////////////////////////////////////////////////////////////////////
         try {
-            request.setURI(Gradle.postURIRequest(request.getURI()));
+            request.setURI(Gradle.postURIRequest.apply(request.getURI()));
         } catch (Throwable e) {
             e.printStackTrace();
         }
