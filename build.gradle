@@ -1,10 +1,28 @@
-plugins {
-    id 'java'
+import org.apache.commons.io.FileUtils
+
+buildscript {
+    repositories {
+        maven { url 'https://plugins.gradle.org/m2/' }
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+    }
+    dependencies {
+        classpath group: 'commons-io', name: 'commons-io', version: '2.6'
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.15.1"
+    }
 }
+
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
 
 group = 'org.gradle'
 version = '4.8.1'
-archivesBaseName = 'gradle-resources-http'
+
+boolean snapshot = true
+
+def _BINTRAY_USER = System.getenv('BINTRAY_USER')
+def _BINTRAY_KEY = System.getenv('BINTRAY_KEY')
+def _REPO_KEY = snapshot ? 'oss-snapshot-local' : 'oss-release-local'
 
 sourceCompatibility = targetCompatibility = 1.8
 
@@ -15,28 +33,163 @@ repositories {
 }
 
 configurations {
-    shade
-    compile.extendsFrom(shade)
+    shade_core_api
+    compile.extendsFrom(shade_core_api)
+    shade_resources_http
+    compile.extendsFrom(shade_resources_http)
 }
 
 dependencies {
-    compile files('lib/gradle-base-services-' + version + '.jar')
-    compile files('lib/gradle-resources-' + version + '.jar')
-    shade files('lib/gradle-resources-http-' + version + '.jar')
+    compile group: 'org.gradle', name: 'gradle-base-services', version: project.version
+    compile group: 'org.gradle', name: 'gradle-resources', version: project.version
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.12'
     compile group: 'commons-lang', name: 'commons-lang', version: '2.6'
     compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.5'
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.16'
     compile group: 'com.google.guava', name: 'guava', version: '17.0'
     compile group: 'com.google.code.findbugs', name: 'jsr305', version: '2.0.1'
+
+    shade_core_api files('lib/gradle-core-api-' + project.version + '.jar')
+    shade_resources_http files('lib/gradle-resources-http-' + project.version + '.jar')
 }
 
-jar {
+jar.enabled(false)
+
+task core_api(type: Jar) {
+    archiveBaseName.set 'gradle-core-api'
     from sourceSets.main.output
-    configurations.shade.copyRecursive().setTransitive(false).each {
+    configurations.shade_core_api.copyRecursive().setTransitive(false).each {
         artifact ->
             from(zipTree(artifact).matching {
-                exclude '**/HttpClientHelper**'
+                exclude '**/api/invocation/Gradle*'
             })
+    }
+    includeEmptyDirs = false
+    exclude '**/http/HttpClientHelper*'
+}
+
+task resources_http(type: Jar) {
+    archiveBaseName.set 'gradle-resources-http'
+    from sourceSets.main.output
+    configurations.shade_resources_http.copyRecursive().setTransitive(false).each {
+        artifact ->
+            from(zipTree(artifact).matching {
+                exclude '**/http/HttpClientHelper*'
+            })
+    }
+    includeEmptyDirs = false
+    exclude '**/api/invocation/Gradle*'
+}
+
+task zip_bin(type: Zip, dependsOn: [core_api, resources_http]) {
+    String identify = 'gradle-' + project.version
+    String identifyName = identify + '-bin.zip'
+    archiveFileName.set 'gradle-uri-' + project.version + '-bin.zip'
+    File originBinFile = cacheFile('https://services.gradle.org/distributions/' + identifyName, 'gradle-dist/' + identifyName)
+    from(zipTree(originBinFile).matching {
+        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar'
+    })
+    from(core_api.getArchiveFile(), {
+        it.into(identify + '/lib/')
+    })
+    from(resources_http.getArchiveFile(), {
+        it.into(identify + '/lib/plugins/')
+    })
+}
+
+task zip_all(type: Zip) {
+    String identify = 'gradle-' + project.version
+    String identifyName = identify + '-all.zip'
+    archiveFileName.set 'gradle-uri-' + project.version + '-all.zip'
+    File originAllFile = cacheFile('https://services.gradle.org/distributions/' + identifyName, 'gradle-dist/' + identifyName)
+    from(zipTree(originAllFile).matching {
+        exclude '**/gradle-core-api*.jar', '**/gradle-resources-http*.jar', '**/http/HttpClientHelper*.java', '**/api/invocation/Gradle*.java'
+    })
+    from(core_api.getArchiveFile(), {
+        it.into(identify + '/lib/')
+    })
+    from(resources_http.getArchiveFile(), {
+        it.into(identify + '/lib/plugins/')
+    })
+    from(sourceSets.main.java.matching({
+        exclude '**/http/HttpClientHelper*'
+    }), {
+        it.into(identify + '/src/core-api/')
+    })
+    from(sourceSets.main.java.matching({
+        exclude '**/api/invocation/Gradle*'
+    }), {
+        it.into(identify + '/src/resources-http/')
+    })
+}
+
+File cacheFile(String url, String filepath) {
+    try {
+        URL source = new URL(url)
+        File targetFile = new File(gradle.gradleUserHomeDir, 'caches/custom-caches/' + filepath)
+        File eTagFile = new File(targetFile.path + ".etag")
+        targetFile.mkdirs()
+
+        String sourceETag = source.openConnection().getHeaderField("ETag").replaceAll('"', '')
+
+        if (!targetFile.exists() || !eTagFile.exists() || targetFile.isDirectory() || eTagFile.isDirectory()) {
+            targetFile.delete()
+            eTagFile.delete()
+            println "Cache downloading " + source
+            FileUtils.copyURLToFile(source, targetFile)
+            FileUtils.writeStringToFile(eTagFile, sourceETag, "UTF-8")
+        } else {
+            String fileETag = FileUtils.readFileToString(eTagFile, "UTF-8")
+            if (sourceETag != fileETag) {
+                println "Cache file " + filepath + " is outdated with eTag: " + fileETag + " -> " + sourceETag
+                targetFile.delete()
+                eTagFile.delete()
+                println "Cache downloading " + source
+                FileUtils.copyURLToFile(source, targetFile)
+                FileUtils.writeStringToFile(eTagFile, sourceETag, "UTF-8")
+            } else {
+                println "Cache file " + filepath + " is up-to-date with eTag: " + fileETag
+            }
+        }
+        return targetFile
+    } catch (Throwable e) {
+        e.printStackTrace()
+    }
+    return null
+}
+
+build {
+    dependsOn(core_api, resources_http, zip_bin, zip_all)
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'org.soraworld'
+            artifactId = 'gradle-uri'
+            version = project.version + (snapshot ? '-SNAPSHOT' : '')
+            artifact zip_bin {
+                classifier 'bin'
+            }
+            artifact zip_all {
+                classifier 'all'
+            }
+        }
+    }
+}
+
+artifactory {
+    setContextUrl('https://oss.jfrog.org/artifactory')
+    publish {
+        repository {
+            repoKey = _REPO_KEY
+            username = _BINTRAY_USER
+            password = _BINTRAY_KEY
+            maven = true
+        }
+        defaults {
+            publications('mavenJava')
+        }
     }
 }
